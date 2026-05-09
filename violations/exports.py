@@ -44,7 +44,7 @@ STATUS_AR = {'approved': 'معتمد', 'pending': 'في الانتظار', 'reje
 def export_excel(records, filters=None, user=None):
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = 'التعديات'
+    ws.title = 'الأراضي طرح النهر'
     ws.sheet_view.rightToLeft = True
 
     # ── Colors ──
@@ -240,7 +240,7 @@ def export_pdf(records, filters=None, user=None):
         pagesize=landscape(A4),
         rightMargin=1.5*cm, leftMargin=1.5*cm,
         topMargin=2*cm, bottomMargin=2*cm,
-        title='تقرير أراضي طرح النهر',
+        title='تقرير اراضي طرح النهر',
     )
 
     styles = getSampleStyleSheet()

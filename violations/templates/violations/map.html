@@ -249,7 +249,7 @@
   <div class="hstats">
     <div class="hs">
       <div class="hs-val" id="h-count">{{ overall.total_count|default:"0" }}</div>
-      <div class="hs-lbl">إجمالي قطع طرح النهر</div>
+      <div class="hs-lbl">إجمالي الأراضي</div>
     </div>
     <div class="hs">
       <div class="hs-val" id="h-area">—</div>
@@ -463,7 +463,7 @@
     <div id="shp-step-1">
       <div style="background:#e8f4fd;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.82rem;color:#1a6ea8;">
         <i class="fa fa-info-circle"></i>
-        ارفع ملف <b>shapefile.zip</b> يحتوي على قطع الأراضي. سيتم استنتاج الحقول تلقائياً من جدول السمات.
+        ارفع ملف <b>shapefile.zip</b> يحتوي على قطع الاراضي طرح النهر. سيتم استنتاج الحقول تلقائياً من جدول السمات.
       </div>
 
       <div class="mf">
@@ -639,7 +639,16 @@
 </style>
 
 
+
+
+
+
 <script>
+
+
+
+
+
 // ══════════════════════════════════════════
 // GLOBAL VARIABLES — defined first
 // ══════════════════════════════════════════
@@ -815,7 +824,7 @@ function renderPolygons(govPcode, polys) {
       var poly = L.polygon(ring, { color: color, weight: 1.5, fillColor: color, fillOpacity: fopac });
       poly.bindTooltip(
         '<b>' + v.name_ar + '</b><br>' + v.district_ar +
-        (cnt ? '<br>التعديات: <b>' + cnt + '</b>' : ''),
+        (cnt ? '<br>الأراضي: <b>' + cnt + '</b>' : ''),
         { sticky: true }
       );
       poly.on('click', function() {
@@ -1238,7 +1247,7 @@ function printViolationDetail() {
   w.document.write('.footer{margin-top:24px;font-size:10px;color:#aaa;border-top:1px solid #ddd;padding-top:8px;text-align:center;}');
   w.document.write('@media print{body{padding:10px;}}');
   w.document.write('</style></head><body>');
-  w.document.write('<h1>بيانات قطعة اراضي — منظومة توثيق أراضي طرح النهر</h1>');
+  w.document.write('<h1>بيانات قطعة أرض — منظومة توثيق أراضي طرح النهر/h1>');
   w.document.write('<div class="code">رمز القطعة: ' + (v.code||'—') + ' &nbsp;|&nbsp; الحالة: ' + (statusLabels[v.status]||v.status||'—') + '</div>');
   w.document.write('<div class="grid">');
   var rows = [
