@@ -750,6 +750,7 @@ def violation_detail_api(request, pk):
             'latitude':     sf(v, 'latitude'),
             'longitude':    sf(v, 'longitude'),
             'geo_exact':    bool(sg(v, 'geo_exact', False)),
+            'geometry':     v.geometry,
             'field_notes':  sg(v, 'field_notes'),
             'submitted_by': sub_by,
             'submitted_at': sub_at,

@@ -372,7 +372,6 @@
   <div class="lyr-title">الطبقات</div>
   <label><input type="checkbox" id="lyr-nile"  checked onchange="toggleLayer('nile')"> أراضي طرح النهر</label>
   <label><input type="checkbox" id="lyr-poly"  checked onchange="toggleLayer('poly')"> حدود القرى</label>
-  <label><input type="checkbox" id="lyr-choro"         onchange="toggleLayer('choro')"> خريطة حرارية</label>
 </div>
 
 <!-- LEGEND -->
@@ -836,14 +835,6 @@ function renderPolygons(govPcode, polys) {
       poly._villName    = v.name_ar;
       poly._origStyle   = { color: color, weight: 1.5, fillColor: color, fillOpacity: fopac };
       polyGroup.addLayer(poly);
-
-      if (cnt > 0 && document.getElementById('lyr-choro').checked) {
-        var t  = cnt / maxCount;
-        var r2 = Math.round(200 + 55 * t);
-        var b2 = Math.round(200 * (1 - t));
-        L.polygon(ring, { color:'#555', weight:.5,
-          fillColor:'rgb(' + r2 + ',60,' + b2 + ')', fillOpacity:.7 }).addTo(choroGroup);
-      }
     });
   });
 }
@@ -947,8 +938,8 @@ function loadData(params) {
       updateSummary(data.summary);
       var gov = params.gov || document.getElementById('f-gov').value;
       if (gov && loadedGovGeos[gov]) renderPolygons(gov, loadedGovGeos[gov]);
-      // تحميل طبقة أراضي طرح النهر مع الفلتر الحالي
-      loadNileLandLayer(params);
+      // تحديث طبقة أراضي طرح النهر بناء على الفلتر الحالي
+      filterNileLandLayer(allRecords);
     });
 }
 
@@ -996,6 +987,7 @@ function flyToRecord(r) {
 
 var _highlightedLayer = null;
 function highlightViolation(id) {
+  var numId = parseInt(id, 10);
   if (_highlightedLayer) {
     try {
       var orig = _highlightedLayer._origStyle;
@@ -1007,7 +999,7 @@ function highlightViolation(id) {
   // أولاً: البحث في طبقة أراضي طرح النهر (shapefile geometry)
   nileLandLayer.eachLayer(function(geoLayer) {
     geoLayer.eachLayer(function(layer) {
-      if (layer._nileId === id) {
+      if (parseInt(layer._nileId, 10) === numId) {
         _highlightedLayer = layer;
         layer.setStyle({ weight: 3.5, color: '#f1c40f', fillColor: '#f39c12', fillOpacity: 0.9 });
         try { map.flyToBounds(layer.getBounds(), {padding:[60,60], maxZoom:17, duration:0.7}); } catch(e) {}
@@ -1021,7 +1013,7 @@ function highlightViolation(id) {
   if (_currentDetailData) { pcode = _currentDetailData.village_pcode; vname = _currentDetailData.village; }
   if (!pcode && !vname) {
     for (var i = 0; i < allRecords.length; i++) {
-      if (allRecords[i].id === id) { pcode = allRecords[i].village_pcode; vname = allRecords[i].village; break; }
+      if (parseInt(allRecords[i].id, 10) === numId) { pcode = allRecords[i].village_pcode; vname = allRecords[i].village; break; }
     }
   }
   if (!pcode && !vname) return;
@@ -1130,6 +1122,14 @@ function openDetailModal(id) {
       }
       body += '</div>';
 
+      // ── Mini-map للمضلع إن وُجدت geometry ──────────────
+      if (v.geometry) {
+        body += '<div style="margin-bottom:14px;">';
+        body += '<div style="font-size:.75rem;font-weight:700;color:#0d3b6e;margin-bottom:5px;"><i class="fa fa-map-location-dot"></i> موقع القطعة</div>';
+        body += '<div id="detail-minimap" style="height:180px;border-radius:8px;border:1.5px solid #dce3ef;"></div>';
+        body += '</div>';
+      }
+
       if (v.field_notes) {
         body += '<div style="background:#fff3cd;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:.82rem;">';
         body += '<strong>ملاحظات ميدانية:</strong> ' + v.field_notes + '</div>';
@@ -1154,6 +1154,26 @@ function openDetailModal(id) {
 
       document.getElementById('detail-modal-body').innerHTML = body;
       if (typeof loadNotes === 'function') { try { loadNotes(id); } catch(e) {} }
+
+      // ── تهيئة mini-map ────────────────────────────────
+      if (v.geometry) {
+        setTimeout(function() {
+          var el = document.getElementById('detail-minimap');
+          if (!el || el._mmInit) return;
+          el._mmInit = true;
+          var mm = L.map(el, {
+            zoomControl: false, attributionControl: false,
+            dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+            touchZoom: false, keyboard: false
+          });
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            {maxZoom:19}).addTo(mm);
+          var gl = L.geoJSON(v.geometry, {
+            style: {color:'#922b21', weight:2.5, fillColor:'#e74c3c', fillOpacity:0.55}
+          }).addTo(mm);
+          try { mm.fitBounds(gl.getBounds(), {padding:[16,16]}); } catch(e) {}
+        }, 120);
+      }
 
       // ── أزرار العمليات ────────────────────────────────
       var actions = '';
@@ -1252,6 +1272,52 @@ function printViolationDetail() {
     w.document.write('<div class="notes"><strong>ملاحظات ميدانية:</strong> ' + v.field_notes + '</div>');
   }
   w.document.write('<div class="footer">طُبع من منظومة رصد التعديات على نهر النيل — ' + new Date().toLocaleString('ar') + '</div>');
+
+  // ── رسم مضلع القطعة في صفحة الطباعة ──
+  if (v.geometry) {
+    try {
+      // استخراج كل النقاط من المضلع أو المضلع المتعدد
+      function extractRings(geom) {
+        if (geom.type === 'Polygon') return geom.coordinates;
+        if (geom.type === 'MultiPolygon') {
+          var r = [];
+          geom.coordinates.forEach(function(p) { p.forEach(function(ring) { r.push(ring); }); });
+          return r;
+        }
+        return [];
+      }
+      var rings = extractRings(v.geometry);
+      if (rings.length) {
+        // إيجاد حدود المضلع
+        var minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+        rings.forEach(function(ring) {
+          ring.forEach(function(pt) {
+            if (pt[0]<minX) minX=pt[0]; if (pt[0]>maxX) maxX=pt[0];
+            if (pt[1]<minY) minY=pt[1]; if (pt[1]>maxY) maxY=pt[1];
+          });
+        });
+        var W=500, H=220, pad=20;
+        var scaleX = (W-pad*2)/(maxX-minX||1);
+        var scaleY = (H-pad*2)/(maxY-minY||1);
+        var scale  = Math.min(scaleX, scaleY);
+        var offX   = pad + ((W-pad*2) - (maxX-minX)*scale)/2;
+        var offY   = pad + ((H-pad*2) - (maxY-minY)*scale)/2;
+
+        w.document.write('<div style="margin-top:16px;border-top:1px solid #ddd;padding-top:12px;">');
+        w.document.write('<div style="font-size:11px;font-weight:bold;color:#0d3b6e;margin-bottom:6px;">مضلع القطعة:</div>');
+        w.document.write('<svg width="' + W + '" height="' + H + '" style="border:1px solid #ddd;border-radius:4px;background:#e8f4fd;">');
+        rings.forEach(function(ring) {
+          var pts = ring.map(function(pt) {
+            var x = offX + (pt[0]-minX)*scale;
+            var y = offY + (maxY-pt[1])*scale;  // اعكس y لأن SVG يبدأ من الأعلى
+            return x.toFixed(1)+','+y.toFixed(1);
+          }).join(' ');
+          w.document.write('<polygon points="'+pts+'" fill="#e74c3c" fill-opacity="0.5" stroke="#922b21" stroke-width="1.5"/>');
+        });
+        w.document.write('</svg></div>');
+      }
+    } catch(e) {}
+  }
   w.document.write('</body></html>');
   w.document.close();
   w.focus();
@@ -1281,7 +1347,8 @@ function resetFilter() {
   document.getElementById('f-search').value = '';
   document.getElementById('f-area').value   = '';
   polyGroup.clearLayers();
-  choroGroup.clearLayers();
+  // إعادة كل مضلعات طبقة طرح النهر لألوانها الأصلية
+  filterNileLandLayer([]);
   loadData();
 }
 
@@ -1289,8 +1356,8 @@ function resetFilter() {
 // LAYER TOGGLES
 // ══════════════════════════════════════════
 function toggleLayer(name) {
-  var checked = document.getElementById('lyr-' + name).checked;
-  var layers  = { poly: polyGroup, choro: choroGroup, nile: nileLandLayer };
+  var checked = document.getElementById('lyr-' + name) && document.getElementById('lyr-' + name).checked;
+  var layers  = { poly: polyGroup, nile: nileLandLayer };
   if (layers[name]) {
     if (checked) map.addLayer(layers[name]);
     else         map.removeLayer(layers[name]);
@@ -1487,6 +1554,60 @@ function onShpFileSelected(input) {
   }
 }
 
+// ── إعادة بناء خيارات كل القوائم مع استبعاد القيم المحجوزة ──
+function refreshFieldMapSelects() {
+  var selects = document.querySelectorAll('#shp-field-map-table select');
+
+  // جمع القيم المحجوزة حالياً (ما تم اختياره في أي قائمة)
+  function getUsedValues(exceptSel) {
+    var used = {};
+    selects.forEach(function(s) {
+      if (s !== exceptSel && s.value) used[s.value] = true;
+    });
+    return used;
+  }
+
+  selects.forEach(function(sel) {
+    var currentVal = sel.value ||
+      (sel.options[0] && sel.options[0].getAttribute('data-suggested')) || '';
+    var used = getUsedValues(sel);
+    var prevScrollTop = sel.parentElement.scrollTop;
+
+    // إعادة بناء الخيارات
+    sel.innerHTML = '';
+    MODEL_FIELDS.forEach(function(m) {
+      // اعرض الخيار إذا: فارغ (تجاهل) أو غير محجوز أو هو القيمة الحالية
+      if (!m.val || !used[m.val] || m.val === currentVal) {
+        var opt = document.createElement('option');
+        opt.value = m.val;
+        opt.textContent = m.label;
+        if (m.val === currentVal) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    });
+
+    // إذا لم تُعَد القيمة الحالية (أصبحت محجوزة) → إعادة ضبط لـ تجاهل
+    if (currentVal && sel.value !== currentVal) {
+      sel.value = '';
+    }
+  });
+}
+
+// ── عند تغيير أي قائمة → أعِد رسم باقي القوائم ──
+function onFieldMapChange(changedSel) {
+  // منع نفس القيمة من الاختيار في قائمتين
+  var newVal = changedSel.value;
+  if (newVal) {
+    document.querySelectorAll('#shp-field-map-table select').forEach(function(s) {
+      if (s !== changedSel && s.value === newVal) {
+        s.value = ''; // إلغاء التكرار في القائمة الأخرى
+      }
+    });
+  }
+  // إعادة بناء خيارات كل القوائم
+  refreshFieldMapSelects();
+}
+
 function shpPreview() {
   var nextBtn = document.getElementById('shp-btn-next');
   if (nextBtn) { nextBtn.disabled = true; nextBtn.textContent = '⏳ جاري التحليل...'; }
@@ -1519,18 +1640,23 @@ function renderFieldMapTable(samples) {
   html += '</tr></thead><tbody>';
   shpFields.forEach(function(f) {
     var suggested = shpSuggestedMap[f] || '';
-    var opts = MODEL_FIELDS.map(function(m) {
-      return '<option value="' + m.val + '"' + (m.val === suggested ? ' selected' : '') + '>' + m.label + '</option>';
-    }).join('');
     html += '<tr style="border-bottom:1px solid #eef0f5;">';
     html += '<td style="padding:6px 10px;font-weight:600;color:#0d3b6e;">' + f + '</td>';
-    html += '<td style="padding:6px 10px;"><select data-field="' + f + '" style="width:100%;padding:5px;border:1px solid #ccc;border-radius:5px;font-family:inherit;font-size:.78rem;">' + opts + '</select></td>';
+    html += '<td style="padding:6px 10px;">';
+    html += '<select data-field="' + f + '" onchange="onFieldMapChange(this)"';
+    html += ' style="width:100%;padding:5px;border:1px solid #ccc;border-radius:5px;font-family:inherit;font-size:.78rem;">';
+    // سيتم ملء الخيارات ديناميكياً بعد إدراج الجدول
+    html += '<option value="" data-suggested="' + suggested + '">جاري التحميل…</option>';
+    html += '</select></td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
   document.getElementById('shp-field-map-table').innerHTML = html;
 
-  // Preview table
+  // ملء كل القوائم بالخيارات المتاحة بعد الإدراج
+  refreshFieldMapSelects();
+
+  // معاينة السجلات
   if (samples.length) {
     var tbl = '<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:.72rem;min-width:100%;">';
     tbl += '<thead><tr style="background:#f5f7fa;">';
@@ -1659,7 +1785,74 @@ function loadNileLandLayer(params) {
     .catch(function() {});
 }
 
-// تحميل الطبقة عند بدء الخريطة بدون فلتر (كل المحافظات)
+function filterNileLandLayer(filteredRecords) {
+  // بناء مجموعة IDs المطابقة من السجلات التي لها geometry فقط
+  var matchedIds = {};
+  var hasGeomRecords = false;
+  (filteredRecords || []).forEach(function(r) {
+    matchedIds[parseInt(r.id, 10)] = true;
+  });
+
+  var isReset = !filteredRecords || filteredRecords.length === 0;
+
+  // تحقق أولاً: هل أي من المضلعات في nileLandLayer موجود في matchedIds؟
+  if (!isReset) {
+    nileLandLayer.eachLayer(function(gl) {
+      gl.eachLayer(function(l) {
+        if (matchedIds[parseInt(l._nileId, 10)]) hasGeomRecords = true;
+      });
+    });
+    // إذا لم تكن أي من السجلات المفلترة لها geometry → أعِد الكل كما هو
+    if (!hasGeomRecords) {
+      isReset = true;
+    }
+  }
+
+  nileLandLayer.eachLayer(function(geoLayer) {
+    geoLayer.eachLayer(function(layer) {
+      var nid = parseInt(layer._nileId, 10);
+      if (isReset || matchedIds[nid]) {
+        if (layer._origStyle) layer.setStyle(layer._origStyle);
+      } else {
+        layer.setStyle({opacity: 0.12, fillOpacity: 0.04, weight: 0.5, color: '#aaa'});
+      }
+    });
+  });
+
+  // قطعة واحدة لها geometry → طِر إليها وبرّزها
+  if (!isReset && hasGeomRecords) {
+    var matchCount = 0;
+    var lastLayer  = null;
+    nileLandLayer.eachLayer(function(gl) {
+      gl.eachLayer(function(layer) {
+        if (matchedIds[parseInt(layer._nileId, 10)]) {
+          matchCount++;
+          lastLayer = layer;
+        }
+      });
+    });
+    if (matchCount === 1 && lastLayer) {
+      lastLayer.setStyle({weight:3.5, color:'#f1c40f', fillColor:'#f39c12', fillOpacity:0.85});
+      try { map.flyToBounds(lastLayer.getBounds(), {padding:[60,60], maxZoom:17, duration:0.7}); } catch(e) {}
+    } else if (matchCount > 1) {
+      // حدود تشمل كل المضلعات المطابقة
+      var bounds = null;
+      nileLandLayer.eachLayer(function(gl) {
+        gl.eachLayer(function(layer) {
+          if (matchedIds[parseInt(layer._nileId, 10)]) {
+            try {
+              var b = layer.getBounds();
+              bounds = bounds ? bounds.extend(b) : b;
+            } catch(e) {}
+          }
+        });
+      });
+      if (bounds) try { map.flyToBounds(bounds, {padding:[40,40], maxZoom:15, duration:0.7}); } catch(e) {}
+    }
+  }
+}
+
+// تحميل الطبقة عند بدء الخريطة
 loadNileLandLayer({});
 
 // ── REMOVED OLD openAddForm / openEditForm (now shapefile-only) ──
