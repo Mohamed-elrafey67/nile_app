@@ -60,7 +60,7 @@ def export_excel(records, filters=None, user=None):
     # ── Title Row ──
     ws.merge_cells('A1:L1')
     title_cell = ws['A1']
-    title_cell.value = 'منظومة رصد التعديات على نهر النيل — وزارة الموارد المائية والري'
+    title_cell.value = 'منظومة توثيق أراضي طرح النهر — وزارة الموارد المائية والري'
     title_cell.font  = Font(name='Arial', bold=True, size=14, color='FFFFFF')
     title_cell.fill  = HDR_FILL
     title_cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -240,7 +240,7 @@ def export_pdf(records, filters=None, user=None):
         pagesize=landscape(A4),
         rightMargin=1.5*cm, leftMargin=1.5*cm,
         topMargin=2*cm, bottomMargin=2*cm,
-        title='تقرير التعديات على نهر النيل',
+        title='تقرير أراضي طرح النهر',
     )
 
     styles = getSampleStyleSheet()
@@ -261,7 +261,7 @@ def export_pdf(records, filters=None, user=None):
     elements = []
 
     # Title
-    elements.append(Paragraph('منظومة رصد التعديات على نهر النيل', title_style))
+    elements.append(Paragraph('منظومة توثيق أراضي طرح النهر', title_style))
     elements.append(Paragraph('وزارة الموارد المائية والري — جمهورية مصر العربية', subtitle_style))
     elements.append(HRFlowable(width='100%', thickness=2,
                                 color=colors.HexColor('#0D3B6E'), spaceAfter=8))
@@ -337,7 +337,7 @@ def export_pdf(records, filters=None, user=None):
     elements.append(Spacer(1, 0.5*cm))
     elements.append(HRFlowable(width='100%', thickness=1,
                                 color=colors.HexColor('#CCCCCC'), spaceAfter=6))
-    summary_text = (f'إجمالي المساحة المتعدى عليها: {total_area:,.2f} م²   |   '
+    summary_text = (f'إجمالي المساحة : {total_area:,.2f} م²   |   '
                     f'عدد السجلات: {len(records)}')
     elements.append(Paragraph(summary_text, subtitle_style))
 
