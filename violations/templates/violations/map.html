@@ -370,6 +370,7 @@
 <!-- LAYER CONTROL -->
 <div id="lyr-ctrl">
   <div class="lyr-title">الطبقات</div>
+  <label><input type="checkbox" id="lyr-nile"  checked onchange="toggleLayer('nile')"> أراضي طرح النهر</label>
   <label><input type="checkbox" id="lyr-poly"  checked onchange="toggleLayer('poly')"> حدود القرى</label>
   <label><input type="checkbox" id="lyr-choro"         onchange="toggleLayer('choro')"> خريطة حرارية</label>
 </div>
@@ -724,9 +725,9 @@ L.control.layers({
   'خريطة عادية': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19})
 }, {}, {position: 'bottomleft'}).addTo(map);
 
-var polyGroup  = L.layerGroup().addTo(map);
-var choroGroup = L.layerGroup();
-// نقاط التعدي محذوفة — الاعتماد على قطع الأراضي فقط
+var polyGroup    = L.layerGroup().addTo(map);   // حدود القرى
+var choroGroup   = L.layerGroup();              // خريطة حرارية
+var nileLandLayer = L.layerGroup().addTo(map);  // أراضي طرح النهر (shapefile)
 
 // ══════════════════════════════════════════
 // STATE
@@ -946,8 +947,8 @@ function loadData(params) {
       updateSummary(data.summary);
       var gov = params.gov || document.getElementById('f-gov').value;
       if (gov && loadedGovGeos[gov]) renderPolygons(gov, loadedGovGeos[gov]);
-      // Load polygon layer for shapefile violations
-      loadViolationPolygons(params);
+      // تحميل طبقة أراضي طرح النهر مع الفلتر الحالي
+      loadNileLandLayer(params);
     });
 }
 
@@ -1002,26 +1003,32 @@ function highlightViolation(id) {
     } catch(e) {}
     _highlightedLayer = null;
   }
+
+  // أولاً: البحث في طبقة أراضي طرح النهر (shapefile geometry)
+  nileLandLayer.eachLayer(function(geoLayer) {
+    geoLayer.eachLayer(function(layer) {
+      if (layer._nileId === id) {
+        _highlightedLayer = layer;
+        layer.setStyle({ weight: 3.5, color: '#f1c40f', fillColor: '#f39c12', fillOpacity: 0.9 });
+        try { map.flyToBounds(layer.getBounds(), {padding:[60,60], maxZoom:17, duration:0.7}); } catch(e) {}
+      }
+    });
+  });
+  if (_highlightedLayer) return;
+
+  // ثانياً: البحث في polyGroup (حدود القرى) بالاسم أو pcode
   var pcode = null, vname = null;
-  if (_currentDetailData) {
-    pcode = _currentDetailData.village_pcode;
-    vname = _currentDetailData.village;
-  }
+  if (_currentDetailData) { pcode = _currentDetailData.village_pcode; vname = _currentDetailData.village; }
   if (!pcode && !vname) {
     for (var i = 0; i < allRecords.length; i++) {
-      if (allRecords[i].id === id) {
-        pcode = allRecords[i].village_pcode;
-        vname = allRecords[i].village;
-        break;
-      }
+      if (allRecords[i].id === id) { pcode = allRecords[i].village_pcode; vname = allRecords[i].village; break; }
     }
   }
   if (!pcode && !vname) return;
-
   polyGroup.eachLayer(function(layer) {
     var match = (pcode && layer._villPcode === pcode) ||
                 (!pcode && vname && layer._villName === vname);
-    if (match) {
+    if (match && !_highlightedLayer) {
       _highlightedLayer = layer;
       layer.setStyle({ weight: 3.5, color: '#f1c40f', fillColor: '#f39c12', fillOpacity: 0.85 });
       try { map.flyToBounds(layer.getBounds(), {padding:[60,60], maxZoom:16, duration:0.7}); } catch(e) {}
@@ -1220,7 +1227,7 @@ function printViolationDetail() {
   w.document.write('.footer{margin-top:24px;font-size:10px;color:#aaa;border-top:1px solid #ddd;padding-top:8px;text-align:center;}');
   w.document.write('@media print{body{padding:10px;}}');
   w.document.write('</style></head><body>');
-  w.document.write('<h1>منظومة توثيق أراضي طرح النهر - بيانات قطعة اراضي</h1>');
+  w.document.write('<h1>بيانات التعدي — منظومة رصد التعديات على نهر النيل</h1>');
   w.document.write('<div class="code">رمز القطعة: ' + (v.code||'—') + ' &nbsp;|&nbsp; الحالة: ' + (statusLabels[v.status]||v.status||'—') + '</div>');
   w.document.write('<div class="grid">');
   var rows = [
@@ -1244,7 +1251,7 @@ function printViolationDetail() {
   if (v.field_notes) {
     w.document.write('<div class="notes"><strong>ملاحظات ميدانية:</strong> ' + v.field_notes + '</div>');
   }
-  w.document.write('<div class="footer">طُبع من منظومة توثيق أراضي طرح النهر — ' + new Date().toLocaleString('ar') + '</div>');
+  w.document.write('<div class="footer">طُبع من منظومة رصد التعديات على نهر النيل — ' + new Date().toLocaleString('ar') + '</div>');
   w.document.write('</body></html>');
   w.document.close();
   w.focus();
@@ -1283,7 +1290,7 @@ function resetFilter() {
 // ══════════════════════════════════════════
 function toggleLayer(name) {
   var checked = document.getElementById('lyr-' + name).checked;
-  var layers  = { poly: polyGroup, choro: choroGroup, polygons: violationPolyLayer };
+  var layers  = { poly: polyGroup, choro: choroGroup, nile: nileLandLayer };
   if (layers[name]) {
     if (checked) map.addLayer(layers[name]);
     else         map.removeLayer(layers[name]);
@@ -1577,8 +1584,8 @@ function doShpImport() {
           html += '<b>تحذيرات (' + data.errors.length + '):</b><br>' + data.errors.join('<br>') + '</div>';
         }
         html += '</div>';
-        // Reload map data after import
-        setTimeout(function() { loadData(buildParams()); loadGovsPanel(); }, 800);
+        // تحديث طبقة أراضي طرح النهر فوراً بعد الاستيراد
+        setTimeout(function() { loadNileLandLayer({}); loadData(buildParams()); loadGovsPanel(); }, 800);
       } else {
         html = '<div style="text-align:center;padding:24px;">' +
           '<i class="fa fa-circle-xmark" style="font-size:3rem;color:#e74c3c;margin-bottom:12px;display:block;"></i>' +
@@ -1596,50 +1603,64 @@ function doShpImport() {
 // ══════════════════════════════════════════
 // POLYGON LAYER FOR SHAPEFILE VIOLATIONS
 // ══════════════════════════════════════════
-var violationPolyLayer  = L.layerGroup().addTo(map);  // polygons من shapefile
-var currentFilters = {};
-
-function loadViolationPolygons(params) {
+// ══════════════════════════════════════════
+// طبقة أراضي طرح النهر
+// تُحمَّل تلقائياً عند بدء الخريطة وتتحدث
+// عند رفع أي محافظة جديدة أو تغيير الفلتر
+// ══════════════════════════════════════════
+function loadNileLandLayer(params) {
+  params = params || {};
   var url = '/api/violations/geojson/?' + new URLSearchParams(params).toString();
   fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(geojson) {
-      violationPolyLayer.clearLayers();
+      nileLandLayer.clearLayers();
       if (!geojson.features || !geojson.features.length) return;
 
       var maxArea = 1;
       geojson.features.forEach(function(f) {
-        if (f.properties.area_total > maxArea) maxArea = f.properties.area_total;
+        if ((f.properties.area_total||0) > maxArea) maxArea = f.properties.area_total;
       });
 
       L.geoJSON(geojson, {
         style: function(feature) {
-          var t = Math.min(feature.properties.area_total / maxArea, 1);
+          var t = Math.min((feature.properties.area_total||0) / maxArea, 1);
           return {
             color:       '#922b21',
             weight:      1.5,
-            fillColor:   t > 0.66 ? '#e74c3c' : t > 0.33 ? '#e67e22' : '#f1c40f',
+            fillColor:   t > 0.66 ? '#c0392b' : t > 0.33 ? '#e67e22' : '#e74c3c',
             fillOpacity: 0.70,
           };
         },
         onEachFeature: function(feature, layer) {
           var p = feature.properties;
+          layer._nilePcode  = p.gov_pcode;
+          layer._nileId     = p.id;
+          layer._origStyle  = {
+            color: '#922b21', weight: 1.5,
+            fillColor: Math.min((p.area_total||0)/maxArea,1) > 0.66 ? '#c0392b' :
+                       Math.min((p.area_total||0)/maxArea,1) > 0.33 ? '#e67e22' : '#e74c3c',
+            fillOpacity: 0.70
+          };
           layer.bindTooltip(
-            '<b>' + (p.code || '—') + '</b><br>' +
-            '<b>' + (p.village || p.district_name || '—') + '</b><br>' +
-            (p.occupant ? 'المستغل: ' + p.occupant + '<br>' : '') +
-            'المساحة: <b>' + Math.round(p.area_total).toLocaleString('ar') + ' م²</b>',
-            {sticky: true}
+            '<b>' + (p.village || p.district_name || '—') + '</b>' +
+            (p.gov_name ? '<br>' + p.gov_name : '') +
+            (p.occupant ? '<br>المستغل: ' + p.occupant : '') +
+            '<br>المساحة: <b>' + Math.round(p.area_total||0).toLocaleString('ar') + ' م²</b>',
+            {sticky: true, direction: 'top'}
           );
           layer.on('click', function(e) {
             L.DomEvent.stopPropagation(e);
             openDetailModal(p.id);
           });
         }
-      }).addTo(violationPolyLayer);
+      }).addTo(nileLandLayer);
     })
     .catch(function() {});
 }
+
+// تحميل الطبقة عند بدء الخريطة بدون فلتر (كل المحافظات)
+loadNileLandLayer({});
 
 // ── REMOVED OLD openAddForm / openEditForm (now shapefile-only) ──
 function openAddForm() { openShapefileModal(); }
@@ -1797,6 +1818,10 @@ function exportData(fmt) {
 function showDetail(r) {
   if (r && r.id) openDetailModal(r.id);
 }
+
+
+
+
 
 </script>
 
