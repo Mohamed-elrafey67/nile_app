@@ -58,7 +58,7 @@ USE_TZ        = True
 STATIC_URL  = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'violations' / 'static']
-STATICFILES_STORAGE = 'whitenoise.storage.StaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -81,3 +81,7 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE   = True
     CSRF_COOKIE_SECURE      = True
+
+# ── السماح بعرض ملفات PDF من نفس النطاق ──────────────────────────
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+SECURE_CONTENT_TYPE_NOSNIFF = False

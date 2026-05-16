@@ -92,8 +92,8 @@ class Violation(models.Model):
 
     # ── المساحات ─────────────────────────────────────────────────
     area_outside   = models.FloatField(default=0, verbose_name='المسطح خارج الحياض م²')
-    area_public    = models.FloatField(default=0, verbose_name='تعدي على المنفعة العامة م²')
-    area_nile_bank = models.FloatField(default=0, verbose_name='تعدي على جسر نهر النيل م²')
+    area_public    = models.FloatField(default=0, verbose_name='مساحة على المنفعة العامة م²')
+    area_nile_bank = models.FloatField(default=0, verbose_name='مساحة على جسر النهر م²')
     area_total     = models.FloatField(default=0, verbose_name='المسطح الإجمالي م²', db_index=True)
 
     # ── الإحداثيات ───────────────────────────────────────────────
@@ -103,6 +103,13 @@ class Violation(models.Model):
 
     # ── هندسة القطعة (GeoJSON polygon من الشيب فايل) ─────────────
     geometry  = models.JSONField(null=True, blank=True, verbose_name='هندسة القطعة (GeoJSON)')
+
+    # ── الخريطة المساحية الرسمية (PDF) ───────────────────────────
+    survey_map = models.FileField(
+        upload_to='survey_maps/',
+        null=True, blank=True,
+        verbose_name='الخريطة المساحية المعتمدة (PDF)'
+    )
 
     # ── الحالة والموافقة ─────────────────────────────────────────
     status       = models.CharField(max_length=20, choices=STATUS_CHOICES,
@@ -125,8 +132,8 @@ class Violation(models.Model):
                                     verbose_name='دفعة الاستيراد')
 
     class Meta:
-        verbose_name        = 'تعدٍّ'
-        verbose_name_plural = 'التعديات على نهر النيل'
+        verbose_name        = 'قطعة أرض'
+        verbose_name_plural = 'أراضي طرح النهر'
         ordering            = ['-submitted_at']
         indexes = [
             models.Index(fields=['governorate', 'district_name']),
@@ -141,7 +148,7 @@ class Violation(models.Model):
 
 class ViolationImage(models.Model):
     violation   = models.ForeignKey(Violation, on_delete=models.CASCADE,
-                                    related_name='images', verbose_name='التعدي')
+                                    related_name='images', verbose_name='قطعة الأرض')
     image       = models.ImageField(upload_to='violations/%Y/%m/', verbose_name='الصورة')
     caption     = models.CharField(max_length=200, blank=True, verbose_name='وصف الصورة')
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL,
@@ -150,7 +157,7 @@ class ViolationImage(models.Model):
 
     class Meta:
         verbose_name        = 'صورة'
-        verbose_name_plural = 'صور التعديات'
+        verbose_name_plural = 'صور القطع'
 
     def __str__(self):
         return f"صورة {self.violation.code}"
@@ -158,7 +165,7 @@ class ViolationImage(models.Model):
 
 class ViolationNote(models.Model):
     violation  = models.ForeignKey(Violation, on_delete=models.CASCADE,
-                                   related_name='notes', verbose_name='التعدي')
+                                   related_name='notes', verbose_name='قطعة الأرض')
     user       = models.ForeignKey(User, on_delete=models.SET_NULL,
                                    null=True, verbose_name='المستخدم')
     text       = models.TextField(verbose_name='نص الملاحظة')

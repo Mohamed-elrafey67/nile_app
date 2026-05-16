@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="{% static 'violations/libs/leaflet/leaflet.css' %}"/>
 
   <script src="{% static 'violations/libs/leaflet/leaflet.js' %}"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link rel="stylesheet" href="{% static 'violations/libs/fontawesome/css/all.min.css' %}"/>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -249,7 +250,7 @@
   <div class="hstats">
     <div class="hs">
       <div class="hs-val" id="h-count">{{ overall.total_count|default:"0" }}</div>
-      <div class="hs-lbl">إجمالي الأراضي</div>
+      <div class="hs-lbl">إجمالي القطع</div>
     </div>
     <div class="hs">
       <div class="hs-val" id="h-area">—</div>
@@ -379,11 +380,11 @@
   <div class="leg-title">دليل الألوان</div>
   <div class="leg-item">
     <div class="leg-sq" style="background:#e74c3c;opacity:.65;border:1px solid #c0392b"></div>
-    <span>قرية بها تعديات</span>
+    <span>قرية بها قطع</span>
   </div>
   <div class="leg-item">
     <div class="leg-sq" style="background:#bdc3c7;opacity:.4;border:1px solid #95a5a6"></div>
-    <span>قرية بلا تعديات</span>
+    <span>قرية بلا قطع</span>
   </div>
   <div class="leg-item">
     <div class="leg-dot" style="background:#e74c3c"></div>
@@ -416,8 +417,8 @@
     <div class="det-row"><span class="det-k">المستغل</span><span class="det-v" id="d-occ">—</span></div>
     <div class="det-row"><span class="det-k">الحوض</span><span class="det-v" id="d-basin">—</span></div>
     <div class="det-row"><span class="det-k">وصف الاستغلال</span><span class="det-v" id="d-desc">—</span></div>
-    <div class="det-row"><span class="det-k">تعدي على الجسر</span><span class="det-v" id="d-nile">—</span></div>
-    <div class="det-row"><span class="det-k">تعدي على المنفعة</span><span class="det-v" id="d-pub">—</span></div>
+    <div class="det-row"><span class="det-k">مساحة على الجسر</span><span class="det-v" id="d-nile">—</span></div>
+    <div class="det-row"><span class="det-k">مساحة على المنفعة</span><span class="det-v" id="d-pub">—</span></div>
     <div class="det-row"><span class="det-k">دقة الموقع</span><span class="det-v" id="d-geo">—</span></div>
   </div>
 </div>
@@ -463,7 +464,7 @@
     <div id="shp-step-1">
       <div style="background:#e8f4fd;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.82rem;color:#1a6ea8;">
         <i class="fa fa-info-circle"></i>
-        ارفع ملف <b>shapefile.zip</b> يحتوي على قطع الاراضي طرح النهر. سيتم استنتاج الحقول تلقائياً من جدول السمات.
+        ارفع ملف <b>shapefile.zip</b> يحتوي على قطع أراضي طرح النهر. سيتم استنتاج الحقول تلقائياً من جدول السمات.
       </div>
 
       <div class="mf">
@@ -569,7 +570,7 @@
   <div style="background:linear-gradient(135deg,#0d3b6e,#1a6ea8);color:#fff;padding:14px 18px;
     display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
     <div style="display:flex;flex-direction:column;gap:3px;">
-      <span style="font-weight:700;font-size:.95rem;" id="detail-modal-title">تفاصيل التعدي</span>
+      <span style="font-weight:700;font-size:.95rem;" id="detail-modal-title">تفاصيل قطعة الأرض</span>
       <span id="detail-modal-code" style="font-size:.75rem;opacity:.75;font-family:monospace;letter-spacing:.5px;"></span>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
@@ -763,7 +764,7 @@ function loadGovsPanel() {
         return '<div class="gov-card" id="gc-' + g.governorate__pcode + '" onclick="selectGov(\'' + g.governorate__pcode + '\',\'' + g.governorate__name_ar + '\')">' +
           '<div><div class="gov-name">' + g.governorate__name_ar + '</div>' +
           '<div class="gov-area">' + area + ' م²</div></div>' +
-          '<div><div class="gov-count">' + count + ' تعدٍّ</div></div>' +
+          '<div><div class="gov-count">' + count + ' قطعة</div></div>' +
           '</div>';
       }).join('');
     });
@@ -824,7 +825,7 @@ function renderPolygons(govPcode, polys) {
       var poly = L.polygon(ring, { color: color, weight: 1.5, fillColor: color, fillOpacity: fopac });
       poly.bindTooltip(
         '<b>' + v.name_ar + '</b><br>' + v.district_ar +
-        (cnt ? '<br>الأراضي: <b>' + cnt + '</b>' : ''),
+        (cnt ? '<br>القطع: <b>' + cnt + '</b>' : ''),
         { sticky: true }
       );
       poly.on('click', function() {
@@ -1055,7 +1056,7 @@ function showDetail(r) {
   flyToRecord(r);
 }
 // ══════════════════════════════════════════
-// DETAIL MODAL — نافذة تفاصيل التعدي
+// DETAIL MODAL — نافذة تفاصيل قطعة الأرض
 // ══════════════════════════════════════════
 // ── متغير عالمي لتخزين بيانات القطعة المفتوحة (للطباعة) ──
 var _currentDetailData = null;
@@ -1080,7 +1081,7 @@ function openDetailModal(id) {
       highlightViolation(id);
 
       // ── العنوان + الرمز ───────────────────────────────
-      document.getElementById('detail-modal-title').textContent = v.gov_name || 'تفاصيل التعدي';
+      document.getElementById('detail-modal-title').textContent = v.gov_name || 'تفاصيل قطعة الأرض';
       document.getElementById('detail-modal-code').textContent  = v.code ? '# ' + v.code : '';
 
       var formatArea = function(val) {
@@ -1103,8 +1104,8 @@ function openDetailModal(id) {
         ['المستغل',          v.occupant || '—'],
         ['الحوض',            v.basin || '—'],
         ['وصف الاستغلال',    v.description || '—'],
-        ['تعدي على الجسر',   formatArea(v.area_nile_bank) + ' م²'],
-        ['تعدي على المنفعة', formatArea(v.area_public) + ' م²'],
+        ['مساحة على الجسر',   formatArea(v.area_nile_bank) + ' م²'],
+        ['مساحة على المنفعة', formatArea(v.area_public) + ' م²'],
         ['المسطح خارج الحياض', formatArea(v.area_outside) + ' م²'],
         ['المسطح الإجمالي',
           '<strong style="color:#e74c3c;font-size:1rem;">' + formatArea(v.area_total) + ' م²</strong>'],
@@ -1122,7 +1123,66 @@ function openDetailModal(id) {
       }
       body += '</div>';
 
-      // ── Mini-map للمضلع إن وُجدت geometry ──────────────
+      // ── تخطيط القطعة: بيانات + خريطة مساحية جنباً إلى جنب ──
+      var surveySection = '';
+      if (v.survey_map_url) {
+        surveySection =
+          '<div style="margin-bottom:14px;border:1.5px solid #dce3ef;border-radius:10px;overflow:hidden;">' +
+
+          // ── رأس قسم الخريطة ──
+          '<div style="background:#0d3b6e;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="color:#fff;font-size:.8rem;font-weight:600;">' +
+          '<i class="fa fa-map" style="margin-left:6px;"></i>الخريطة المساحية المعتمدة — رقم الموقع: ' +
+          (v.code || '—') + '</span>' +
+          '<div style="display:flex;gap:6px;">' +
+          '<a href="' + v.survey_map_url + '" target="_blank" ' +
+          'style="padding:4px 10px;background:rgba(255,255,255,.15);color:#fff;border-radius:5px;' +
+          'font-size:.72rem;text-decoration:none;border:1px solid rgba(255,255,255,.3);">' +
+          '<i class="fa fa-expand"></i> فتح كاملاً</a>' +
+          '<a href="' + v.survey_map_url + '" download ' +
+          'style="padding:4px 10px;background:#27ae60;color:#fff;border-radius:5px;' +
+          'font-size:.72rem;text-decoration:none;">' +
+          '<i class="fa fa-download"></i> تحميل</a>' +
+          (ROLE !== 'viewer' ?
+            '<label style="padding:4px 10px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px;' +
+            'font-size:.72rem;cursor:pointer;border:1px solid rgba(255,255,255,.3);">' +
+            '<i class="fa fa-refresh"></i> استبدال' +
+            '<input type="file" accept=".pdf" style="display:none;" onchange="uploadSurveyMap(' + id + ', this)">' +
+            '</label>' : '') +
+          '</div></div>' +
+
+          // ── عارض PDF بـ PDF.js ──
+          '<div id="pdf-container-' + id + '" style="background:#525659;border-radius:0 0 10px 10px;' +
+          'padding:10px;max-height:520px;overflow-y:auto;">' +
+          '<canvas id="pdf-canvas-' + id + '" style="width:100%;display:block;' +
+          'border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.3);"></canvas>' +
+          '<div id="pdf-loading-' + id + '" style="text-align:center;padding:40px;color:#fff;">' +
+          '<i class="fa fa-spinner fa-spin" style="font-size:2rem;margin-bottom:10px;display:block;"></i>' +
+          'جاري تحميل الخريطة...</div>' +
+          '</div>' +
+
+          '</div>';
+
+      } else if (ROLE !== 'viewer') {
+        surveySection =
+          '<div style="margin-bottom:14px;">' +
+          '<div style="font-size:.78rem;font-weight:600;color:#0d3b6e;margin-bottom:6px;">' +
+          '<i class="fa fa-file-pdf" style="color:#ccc;margin-left:4px;"></i> الخريطة المساحية المعتمدة</div>' +
+          '<label style="display:flex;align-items:center;gap:10px;background:#f8f9fa;' +
+          'border:2px dashed #c5d5e8;border-radius:10px;padding:20px 16px;cursor:pointer;' +
+          'transition:all .2s;" onmouseover="this.style.background=\'#e8f0fe\'" ' +
+          'onmouseout="this.style.background=\'#f8f9fa\'">' +
+          '<i class="fa fa-upload" style="font-size:2rem;color:#a0b4d0;flex-shrink:0;"></i>' +
+          '<div>' +
+          '<div style="font-weight:600;color:#0d3b6e;font-size:.85rem;">رفع الخريطة المساحية المعتمدة</div>' +
+          '<div style="font-size:.75rem;color:#888;margin-top:3px;">ملف PDF صادر من الهيئة المصرية العامة للمساحة</div>' +
+          '</div>' +
+          '<input type="file" accept=".pdf" style="display:none;" onchange="uploadSurveyMap(' + id + ', this)">' +
+          '</label></div>';
+      }
+
+      // ── تجميع الـ body: الخريطة أولاً ثم البيانات ──
+      body = surveySection + body;
       if (v.geometry) {
         body += '<div style="margin-bottom:14px;">';
         body += '<div style="font-size:.75rem;font-weight:700;color:#0d3b6e;margin-bottom:5px;"><i class="fa fa-map-location-dot"></i> موقع القطعة</div>';
@@ -1154,6 +1214,11 @@ function openDetailModal(id) {
 
       document.getElementById('detail-modal-body').innerHTML = body;
       if (typeof loadNotes === 'function') { try { loadNotes(id); } catch(e) {} }
+
+      // ── تهيئة عارض PDF بـ PDF.js ─────────────────────────
+      if (v.survey_map_url) {
+        setTimeout(function() { renderPDF(v.survey_map_url, id); }, 100);
+      }
 
       // ── تهيئة mini-map ────────────────────────────────
       if (v.geometry) {
@@ -1222,6 +1287,84 @@ function closeAllModals() {
   _currentDetailData = null;
 }
 
+// ══════════════════════════════════════════
+// عارض PDF بـ PDF.js
+// ══════════════════════════════════════════
+function renderPDF(url, id) {
+  var canvas  = document.getElementById('pdf-canvas-' + id);
+  var loading = document.getElementById('pdf-loading-' + id);
+  if (!canvas && !loading) return;
+
+  function showFallback(msg) {
+    if (loading) loading.innerHTML =
+      '<i class="fa fa-file-pdf" style="font-size:2.5rem;color:#e74c3c;margin-bottom:10px;display:block;"></i>' +
+      '<div style="color:#fff;margin-bottom:12px;">' + (msg||'تعذّر عرض الخريطة') + '</div>' +
+      '<a href="' + url + '" target="_blank" style="padding:8px 20px;background:#0d3b6e;color:#fff;' +
+      'border-radius:6px;text-decoration:none;margin-left:8px;font-size:.85rem;">' +
+      '<i class="fa fa-eye"></i> فتح الخريطة</a> ' +
+      '<a href="' + url + '" download style="padding:8px 20px;background:#27ae60;color:#fff;' +
+      'border-radius:6px;text-decoration:none;font-size:.85rem;">' +
+      '<i class="fa fa-download"></i> تحميل</a>';
+  }
+
+  if (typeof pdfjsLib === 'undefined') { showFallback('مكتبة PDF غير محملة'); return; }
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  var container = document.getElementById('pdf-container-' + id);
+
+  pdfjsLib.getDocument(url).promise.then(function(pdf) {
+    if (loading) loading.style.display = 'none';
+    var totalPages = pdf.numPages;
+
+    function renderPage(pageNum) {
+      pdf.getPage(pageNum).then(function(page) {
+        var w        = container ? container.offsetWidth - 20 : 560;
+        var viewport = page.getViewport({scale: 1});
+        var scale    = w / viewport.width;
+        var scaled   = page.getViewport({scale: scale});
+        var c        = document.createElement('canvas');
+        c.width  = scaled.width;
+        c.height = scaled.height;
+        c.style.cssText = 'width:100%;display:block;border-radius:4px;' +
+          'box-shadow:0 2px 8px rgba(0,0,0,.3);margin-bottom:10px;';
+        if (container) container.appendChild(c);
+        page.render({canvasContext: c.getContext('2d'), viewport: scaled});
+      });
+    }
+    for (var i = 1; i <= totalPages; i++) renderPage(i);
+
+  }).catch(function() { showFallback('تعذّر عرض الخريطة داخل التطبيق'); });
+}
+
+// ── رفع الخريطة المساحية ─────────────────────────────
+function uploadSurveyMap(id, input) {
+  if (!input.files[0]) return;
+  var file = input.files[0];
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    showToast('يجب أن يكون الملف بصيغة PDF', 'error'); return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    showToast('حجم الملف يتجاوز 20 ميجابايت', 'error'); return;
+  }
+  showToast('جاري رفع الخريطة...', 'info');
+  var fd = new FormData();
+  fd.append('survey_map', file);
+  fd.append('csrfmiddlewaretoken', getCsrfToken());
+  fetch('/api/violations/' + id + '/survey-map/', {method: 'POST', body: fd})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        showToast(data.message, 'success');
+        openDetailModal(id);   // إعادة تحميل الكارت
+      } else {
+        showToast(data.error || 'حدث خطأ', 'error');
+      }
+    })
+    .catch(function() { showToast('خطأ في الاتصال', 'error'); });
+}
+
 // ── طباعة بيانات القطعة ───────────────────────────────
 function printViolationDetail() {
   var v = _currentDetailData;
@@ -1232,7 +1375,7 @@ function printViolationDetail() {
   var statusLabels = {pending: 'في الانتظار', approved: 'معتمد', rejected: 'مرفوض'};
   var w = window.open('', '_blank', 'width=800,height:700');
   w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head>');
-  w.document.write('<meta charset="UTF-8"><title>تعدٍّ: ' + (v.code||'') + '</title>');
+  w.document.write('<meta charset="UTF-8"><title>قطعة: ' + (v.code||'') + '</title>');
   w.document.write('<style>');
   w.document.write('*{box-sizing:border-box;margin:0;padding:0;}');
   w.document.write('body{font-family:Tahoma,Arial,sans-serif;font-size:13px;color:#111;padding:24px;direction:rtl;}');
@@ -1247,7 +1390,7 @@ function printViolationDetail() {
   w.document.write('.footer{margin-top:24px;font-size:10px;color:#aaa;border-top:1px solid #ddd;padding-top:8px;text-align:center;}');
   w.document.write('@media print{body{padding:10px;}}');
   w.document.write('</style></head><body>');
-  w.document.write('<h1>بيانات قطعة أرض — منظومة توثيق أراضي طرح النهر/h1>');
+  w.document.write('<h1>بيانات قطعة الأرض — منظومة توثيق أراضي طرح النهر</h1>');
   w.document.write('<div class="code">رمز القطعة: ' + (v.code||'—') + ' &nbsp;|&nbsp; الحالة: ' + (statusLabels[v.status]||v.status||'—') + '</div>');
   w.document.write('<div class="grid">');
   var rows = [
@@ -1257,8 +1400,8 @@ function printViolationDetail() {
     ['اسم المستغل',          v.occupant||'—'],
     ['اسم الحوض',            v.basin||'—'],
     ['وصف الاستغلال',        v.description||'—'],
-    ['تعدي على جسر النيل',   formatArea(v.area_nile_bank)+' م²'],
-    ['تعدي على المنفعة العامة', formatArea(v.area_public)+' م²'],
+    ['مساحة على جسر النهر',   formatArea(v.area_nile_bank)+' م²'],
+    ['مساحة على المنفعة العامة', formatArea(v.area_public)+' م²'],
     ['المسطح خارج الحياض',  formatArea(v.area_outside)+' م²'],
     ['المسطح الإجمالي',      '<span class="total">' + formatArea(v.area_total)+' م²</span>'],
     ['أُدخل بواسطة',         v.submitted_by||'—'],
@@ -1272,6 +1415,17 @@ function printViolationDetail() {
     w.document.write('<div class="notes"><strong>ملاحظات ميدانية:</strong> ' + v.field_notes + '</div>');
   }
   w.document.write('<div class="footer">طُبع من منظومة توثيق أراضي طرح النهر — ' + new Date().toLocaleString('ar') + '</div>');
+
+  // ── رابط الخريطة المساحية في الطباعة ──
+  if (v.survey_map_url) {
+    w.document.write('<div style="margin-top:16px;border-top:1px solid #ddd;padding-top:12px;">');
+    w.document.write('<div style="font-size:11px;font-weight:bold;color:#0d3b6e;margin-bottom:6px;">الخريطة المساحية المعتمدة — رقم الموقع: ' + (v.code||'') + '</div>');
+    w.document.write('<a href="' + window.location.origin + v.survey_map_url + '" target="_blank" ' +
+      'style="display:inline-block;padding:6px 16px;background:#0d3b6e;color:#fff;' +
+      'border-radius:5px;font-size:11px;text-decoration:none;">' +
+      '📄 فتح الخريطة المساحية PDF</a>');
+    w.document.write('</div>');
+  }
 
   // ── رسم مضلع القطعة في صفحة الطباعة ──
   if (v.geometry) {
@@ -1416,14 +1570,14 @@ function checkPendingCount() {
 
         // إشعار في الصفحة
         showToast(
-          'يوجد ' + count + ' تعدٍّ في انتظار موافقتك',
+          'يوجد ' + count + ' قطعة في انتظار موافقتك',
           'warning'
         );
 
         // إشعار المتصفح (خارج الصفحة)
         if (notifPermission && document.hidden) {
           new Notification('منظومة توثيق أراضي طرح النهر', {
-            body: 'يوجد ' + newCount + ' تعدٍّ جديد في انتظار مراجعتك',
+            body: 'يوجد ' + newCount + ' قطعة جديدة في انتظار مراجعتك',
             icon: '/static/violations/libs/leaflet/images/marker-icon.png',
             tag: 'pending-violation',
           });
@@ -1488,8 +1642,8 @@ var MODEL_FIELDS = [
   {val:'village',      label:'القرية / المدينة'},
   {val:'code',         label:'الرمز'},
   {val:'area_outside', label:'المسطح خارج الحياض م²'},
-  {val:'area_public',  label:'تعدي على المنفعة العامة م²'},
-  {val:'area_nile_bank',label:'تعدي على جسر النيل م²'},
+  {val:'area_public',  label:'مساحة على المنفعة العامة م²'},
+  {val:'area_nile_bank',label:'مساحة على جسر النهر م²'},
   {val:'area_total',   label:'المسطح الإجمالي م²'},
 ];
 

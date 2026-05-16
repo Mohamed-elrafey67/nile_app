@@ -356,7 +356,7 @@ def shapefile_preview_api(request):
 def shapefile_import_api(request):
     """
     يستقبل ملف shapefile.zip + mapping الحقول + pcode المحافظة
-    ويستورد جميع القطع كتعديات مع الهندسة الجغرافية الكاملة.
+    ويستورد جميع قطع أراضي طرح النهر مع الهندسة الجغرافية الكاملة.
     """
     role = get_role(request.user)
     if role not in ('data_entry', 'supervisor', 'manager'):
@@ -540,7 +540,7 @@ def shapefile_import_api(request):
 @login_required(login_url='login')
 def violations_geojson_api(request):
     """
-    يعيد GeoJSON للتعديات التي لها هندسة (polygon) — للعرض المباشر على الخريطة.
+    يعيد GeoJSON لقطع الأراضي التي لها هندسة (polygon) — للعرض المباشر على الخريطة.
     """
     role = get_role(request.user)
     qs = Violation.objects.select_related('governorate').exclude(geometry__isnull=True)
@@ -678,6 +678,68 @@ def upload_image_api(request, pk):
         saved.append({'id':vi.id,'url':vi.image.url})
     return JsonResponse({'success':True,'images':saved})
 
+
+# ── SERVE SURVEY MAP (مع headers صحيحة لـ PDF.js) ────────────────
+@login_required(login_url='login')
+def serve_survey_map(request, pk):
+    """يخدم ملف PDF مع headers تسمح لـ PDF.js بقراءته"""
+    from django.http import FileResponse, Http404
+    v = get_object_or_404(Violation, pk=pk)
+    if not v.survey_map:
+        raise Http404
+    try:
+        response = FileResponse(
+            open(v.survey_map.path, 'rb'),
+            content_type='application/pdf'
+        )
+        response['Content-Disposition'] = f'inline; filename="{v.code}.pdf"'
+        response['Access-Control-Allow-Origin'] = '*'
+        response['X-Frame-Options'] = 'SAMEORIGIN'
+        return response
+    except FileNotFoundError:
+        raise Http404
+
+# ── SURVEY MAP UPLOAD ──────────────────────────────────────────────
+@login_required(login_url='login')
+def upload_survey_map_api(request, pk):
+    """رفع الخريطة المساحية الرسمية (PDF) وربطها بقطعة الأرض"""
+    role = get_role(request.user)
+    if role not in ('data_entry', 'supervisor', 'manager'):
+        return JsonResponse({'error': 'غير مصرح'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST only'}, status=405)
+
+    v   = get_object_or_404(Violation, pk=pk)
+    pdf = request.FILES.get('survey_map')
+
+    if not pdf:
+        return JsonResponse({'error': 'لم يتم اختيار ملف'}, status=400)
+    if not pdf.name.lower().endswith('.pdf'):
+        return JsonResponse({'error': 'يجب أن يكون الملف بصيغة PDF'}, status=400)
+    if pdf.size > 20 * 1024 * 1024:   # 20 MB
+        return JsonResponse({'error': 'حجم الملف يتجاوز 20 ميجابايت'}, status=400)
+
+    # حذف الملف القديم إن وُجد
+    if v.survey_map:
+        try:
+            import os
+            if os.path.isfile(v.survey_map.path):
+                os.remove(v.survey_map.path)
+        except Exception:
+            pass
+
+    v.survey_map = pdf
+    v.save(update_fields=['survey_map'])
+
+    log_action(request, 'edit',
+               f'رفع خريطة مساحية للقطعة: {v.code}')
+    return JsonResponse({
+        'success': True,
+        'url':     f'/api/violations/{v.pk}/survey-map/view/',
+        'name':    pdf.name,
+        'message': 'تم رفع الخريطة المساحية بنجاح',
+    })
+
 # ── VIOLATION DETAIL ──────────────────────────────────────────────
 @login_required(login_url='login')
 def violation_detail_api(request, pk):
@@ -751,6 +813,8 @@ def violation_detail_api(request, pk):
             'longitude':    sf(v, 'longitude'),
             'geo_exact':    bool(sg(v, 'geo_exact', False)),
             'geometry':     v.geometry,
+            'survey_map_url':  f'/api/violations/{v.pk}/survey-map/view/' if v.survey_map else None,
+            'survey_map_name': v.survey_map.name.split('/')[-1] if v.survey_map else None,
             'field_notes':  sg(v, 'field_notes'),
             'submitted_by': sub_by,
             'submitted_at': sub_at,
