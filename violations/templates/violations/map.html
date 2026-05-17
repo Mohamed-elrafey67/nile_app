@@ -565,23 +565,127 @@
 <!-- DETAIL / REVIEW MODAL -->
 <!-- ══════════════════════════════════════════════════ -->
 <div id="modal-detail" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  width:600px;max-width:95vw;max-height:90vh;background:#fff;border-radius:12px;
+  width:95vw;max-width:1300px;height:90vh;background:#fff;border-radius:12px;
   box-shadow:0 8px 40px rgba(0,0,0,.3);z-index:3100;overflow:hidden;flex-direction:column;">
-  <div style="background:linear-gradient(135deg,#0d3b6e,#1a6ea8);color:#fff;padding:14px 18px;
+
+  <!-- ── رأس النافذة ── -->
+  <div style="background:linear-gradient(135deg,#0d3b6e,#1a6ea8);color:#fff;padding:12px 18px;
     display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-    <div style="display:flex;flex-direction:column;gap:3px;">
+    <div style="display:flex;flex-direction:column;gap:2px;">
       <span style="font-weight:700;font-size:.95rem;" id="detail-modal-title">تفاصيل قطعة الأرض</span>
-      <span id="detail-modal-code" style="font-size:.75rem;opacity:.75;font-family:monospace;letter-spacing:.5px;"></span>
+      <span id="detail-modal-code" style="font-size:.75rem;opacity:.75;font-family:monospace;"></span>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <button onclick="printViolationDetail()" title="طباعة" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:6px;padding:5px 11px;cursor:pointer;font-family:inherit;font-size:.8rem;font-weight:600;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button onclick="printViolationDetail()" title="طباعة"
+        style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+        color:#fff;border-radius:6px;padding:5px 11px;cursor:pointer;font-family:inherit;font-size:.8rem;">
         <i class="fa fa-print"></i> طباعة
       </button>
-      <span onclick="closeAllModals()" style="cursor:pointer;font-size:1.1rem;opacity:.8;">✕</span>
+      <span onclick="closeAllModals()" style="cursor:pointer;font-size:1.2rem;opacity:.8;padding:2px 6px;">✕</span>
     </div>
   </div>
-  <div id="detail-modal-body" style="flex:1;overflow-y:auto;padding:16px;"></div>
-  <div id="detail-modal-actions" style="padding:12px 18px;border-top:1px solid #eee;display:flex;gap:8px;flex-shrink:0;background:#fafbfd;"></div>
+
+  <!-- ── المحتوى: عمودان ── -->
+  <div style="flex:1;display:flex;overflow:hidden;">
+
+    <!-- ── العمود الأيمن: البيانات (45%) ── -->
+    <div id="detail-modal-body"
+      style="width:45%;min-width:320px;overflow-y:auto;padding:16px;
+      border-left:1px solid #e0e8f0;background:#fff;flex-shrink:0;">
+    </div>
+
+    <!-- ── العمود الأيسر: الخريطة المساحية (55%) ── -->
+    <div id="detail-pdf-panel"
+      style="flex:1;display:flex;flex-direction:column;background:#3a3a3a;overflow:hidden;">
+
+      <!-- شريط أدوات PDF -->
+      <div id="pdf-toolbar" style="display:none;background:#2c2c2c;padding:8px 14px;
+        display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;">
+
+        <!-- التنقل بين الصفحات -->
+        <button onclick="pdfPrevPage()" title="الصفحة السابقة"
+          style="background:#444;color:#fff;border:none;border-radius:5px;
+          padding:5px 10px;cursor:pointer;font-size:.8rem;">
+          <i class="fa fa-chevron-right"></i>
+        </button>
+        <span style="color:#ccc;font-size:.8rem;white-space:nowrap;">
+          صفحة <span id="pdf-page-current">1</span> / <span id="pdf-page-total">1</span>
+        </span>
+        <button onclick="pdfNextPage()" title="الصفحة التالية"
+          style="background:#444;color:#fff;border:none;border-radius:5px;
+          padding:5px 10px;cursor:pointer;font-size:.8rem;">
+          <i class="fa fa-chevron-left"></i>
+        </button>
+
+        <div style="width:1px;height:20px;background:#555;margin:0 4px;"></div>
+
+        <!-- التكبير/التصغير -->
+        <button onclick="pdfZoomOut()" title="تصغير"
+          style="background:#444;color:#fff;border:none;border-radius:5px;
+          padding:5px 10px;cursor:pointer;font-size:.85rem;">
+          <i class="fa fa-search-minus"></i>
+        </button>
+        <span id="pdf-zoom-label" style="color:#ccc;font-size:.78rem;min-width:40px;text-align:center;">100%</span>
+        <button onclick="pdfZoomIn()" title="تكبير"
+          style="background:#444;color:#fff;border:none;border-radius:5px;
+          padding:5px 10px;cursor:pointer;font-size:.85rem;">
+          <i class="fa fa-search-plus"></i>
+        </button>
+        <button onclick="pdfFitWidth()" title="ملاءمة العرض"
+          style="background:#444;color:#fff;border:none;border-radius:5px;
+          padding:5px 10px;cursor:pointer;font-size:.78rem;">
+          <i class="fa fa-expand-arrows-alt"></i>
+        </button>
+
+        <div style="width:1px;height:20px;background:#555;margin:0 4px;"></div>
+
+        <!-- تحميل — فتح كاملاً — استبدال -->
+        <a id="pdf-fullpage-btn" href="#" target="_blank"
+          style="background:#1a6ea8;color:#fff;border-radius:5px;padding:5px 10px;
+          text-decoration:none;font-size:.78rem;" title="فتح في صفحة كاملة بدقة عالية">
+          <i class="fa fa-up-right-from-square"></i> فتح كاملاً
+        </a>
+        <a id="pdf-download-btn" href="#" download
+          style="background:#27ae60;color:#fff;border-radius:5px;padding:5px 10px;
+          text-decoration:none;font-size:.78rem;">
+          <i class="fa fa-download"></i> تحميل
+        </a>
+        <label id="pdf-replace-btn"
+          style="background:#e67e22;color:#fff;border-radius:5px;padding:5px 10px;
+          cursor:pointer;font-size:.78rem;display:none;">
+          <i class="fa fa-sync"></i> استبدال
+          <input type="file" accept=".pdf" style="display:none;"
+            onchange="uploadSurveyMapFromPanel(this)">
+        </label>
+      </div>
+
+      <!-- منطقة عرض PDF -->
+      <div id="pdf-scroll-area"
+        style="flex:1;overflow:auto;padding:16px;box-sizing:border-box;
+        background:#3a3a3a;">
+        <!-- الكانفاس يُضاف هنا ديناميكياً -->
+        <div id="pdf-no-map"
+          style="display:flex;flex-direction:column;align-items:center;
+          justify-content:center;height:100%;color:#888;text-align:center;">
+          <i class="fa fa-file-pdf" style="font-size:3rem;margin-bottom:12px;color:#555;"></i>
+          <div style="font-size:.9rem;">لم ترفع خريطة مساحية لهذه القطعة بعد</div>
+          <label id="pdf-upload-btn-panel" style="display:none;margin-top:14px;
+            padding:8px 20px;background:#0d3b6e;color:#fff;border-radius:7px;
+            cursor:pointer;font-size:.85rem;">
+            <i class="fa fa-upload"></i> رفع الخريطة المساحية
+            <input type="file" accept=".pdf" style="display:none;"
+              onchange="uploadSurveyMapFromPanel(this)">
+          </label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── شريط العمليات السفلي ── -->
+  <div id="detail-modal-actions"
+    style="padding:10px 18px;border-top:1px solid #eee;display:flex;gap:8px;
+    flex-shrink:0;background:#fafbfd;"></div>
 </div>
 
 <style>
@@ -1123,70 +1227,11 @@ function openDetailModal(id) {
       }
       body += '</div>';
 
-      // ── تخطيط القطعة: بيانات + خريطة مساحية جنباً إلى جنب ──
-      var surveySection = '';
-      if (v.survey_map_url) {
-        surveySection =
-          '<div style="margin-bottom:14px;border:1.5px solid #dce3ef;border-radius:10px;overflow:hidden;">' +
-
-          // ── رأس قسم الخريطة ──
-          '<div style="background:#0d3b6e;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;">' +
-          '<span style="color:#fff;font-size:.8rem;font-weight:600;">' +
-          '<i class="fa fa-map" style="margin-left:6px;"></i>الخريطة المساحية المعتمدة — رقم الموقع: ' +
-          (v.code || '—') + '</span>' +
-          '<div style="display:flex;gap:6px;">' +
-          '<a href="' + v.survey_map_url + '" target="_blank" ' +
-          'style="padding:4px 10px;background:rgba(255,255,255,.15);color:#fff;border-radius:5px;' +
-          'font-size:.72rem;text-decoration:none;border:1px solid rgba(255,255,255,.3);">' +
-          '<i class="fa fa-expand"></i> فتح كاملاً</a>' +
-          '<a href="' + v.survey_map_url + '" download ' +
-          'style="padding:4px 10px;background:#27ae60;color:#fff;border-radius:5px;' +
-          'font-size:.72rem;text-decoration:none;">' +
-          '<i class="fa fa-download"></i> تحميل</a>' +
-          (ROLE !== 'viewer' ?
-            '<label style="padding:4px 10px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px;' +
-            'font-size:.72rem;cursor:pointer;border:1px solid rgba(255,255,255,.3);">' +
-            '<i class="fa fa-refresh"></i> استبدال' +
-            '<input type="file" accept=".pdf" style="display:none;" onchange="uploadSurveyMap(' + id + ', this)">' +
-            '</label>' : '') +
-          '</div></div>' +
-
-          // ── عارض PDF بـ PDF.js ──
-          '<div id="pdf-container-' + id + '" style="background:#525659;border-radius:0 0 10px 10px;' +
-          'padding:10px;max-height:520px;overflow-y:auto;">' +
-          '<canvas id="pdf-canvas-' + id + '" style="width:100%;display:block;' +
-          'border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.3);"></canvas>' +
-          '<div id="pdf-loading-' + id + '" style="text-align:center;padding:40px;color:#fff;">' +
-          '<i class="fa fa-spinner fa-spin" style="font-size:2rem;margin-bottom:10px;display:block;"></i>' +
-          'جاري تحميل الخريطة...</div>' +
-          '</div>' +
-
-          '</div>';
-
-      } else if (ROLE !== 'viewer') {
-        surveySection =
-          '<div style="margin-bottom:14px;">' +
-          '<div style="font-size:.78rem;font-weight:600;color:#0d3b6e;margin-bottom:6px;">' +
-          '<i class="fa fa-file-pdf" style="color:#ccc;margin-left:4px;"></i> الخريطة المساحية المعتمدة</div>' +
-          '<label style="display:flex;align-items:center;gap:10px;background:#f8f9fa;' +
-          'border:2px dashed #c5d5e8;border-radius:10px;padding:20px 16px;cursor:pointer;' +
-          'transition:all .2s;" onmouseover="this.style.background=\'#e8f0fe\'" ' +
-          'onmouseout="this.style.background=\'#f8f9fa\'">' +
-          '<i class="fa fa-upload" style="font-size:2rem;color:#a0b4d0;flex-shrink:0;"></i>' +
-          '<div>' +
-          '<div style="font-weight:600;color:#0d3b6e;font-size:.85rem;">رفع الخريطة المساحية المعتمدة</div>' +
-          '<div style="font-size:.75rem;color:#888;margin-top:3px;">ملف PDF صادر من الهيئة المصرية العامة للمساحة</div>' +
-          '</div>' +
-          '<input type="file" accept=".pdf" style="display:none;" onchange="uploadSurveyMap(' + id + ', this)">' +
-          '</label></div>';
-      }
-
-      // ── تجميع الـ body: الخريطة أولاً ثم البيانات ──
-      body = surveySection + body;
+      // ── Mini-map للمضلع إن وُجدت geometry ──────────────────
       if (v.geometry) {
         body += '<div style="margin-bottom:14px;">';
         body += '<div style="font-size:.75rem;font-weight:700;color:#0d3b6e;margin-bottom:5px;"><i class="fa fa-map-location-dot"></i> موقع القطعة</div>';
-        body += '<div id="detail-minimap" style="height:180px;border-radius:8px;border:1.5px solid #dce3ef;"></div>';
+        body += '<div id="detail-minimap" style="height:160px;border-radius:8px;border:1.5px solid #dce3ef;"></div>';
         body += '</div>';
       }
 
@@ -1215,10 +1260,8 @@ function openDetailModal(id) {
       document.getElementById('detail-modal-body').innerHTML = body;
       if (typeof loadNotes === 'function') { try { loadNotes(id); } catch(e) {} }
 
-      // ── تهيئة عارض PDF بـ PDF.js ─────────────────────────
-      if (v.survey_map_url) {
-        setTimeout(function() { renderPDF(v.survey_map_url, id); }, 100);
-      }
+      // ── تهيئة لوحة PDF ─────────────────────────────────────────
+      initPdfPanel(v, id);
 
       // ── تهيئة mini-map ────────────────────────────────
       if (v.geometry) {
@@ -1288,55 +1331,198 @@ function closeAllModals() {
 }
 
 // ══════════════════════════════════════════
-// عارض PDF بـ PDF.js
+// لوحة PDF — تهيئة وأدوات
 // ══════════════════════════════════════════
-function renderPDF(url, id) {
-  var canvas  = document.getElementById('pdf-canvas-' + id);
-  var loading = document.getElementById('pdf-loading-' + id);
-  if (!canvas && !loading) return;
+var _pdfDoc        = null;
+var _pdfCurrentPage = 1;
+var _pdfZoom       = 1.0;
+var _pdfUrl        = null;
+var _pdfViolId     = null;
 
-  function showFallback(msg) {
-    if (loading) loading.innerHTML =
-      '<i class="fa fa-file-pdf" style="font-size:2.5rem;color:#e74c3c;margin-bottom:10px;display:block;"></i>' +
-      '<div style="color:#fff;margin-bottom:12px;">' + (msg||'تعذّر عرض الخريطة') + '</div>' +
-      '<a href="' + url + '" target="_blank" style="padding:8px 20px;background:#0d3b6e;color:#fff;' +
-      'border-radius:6px;text-decoration:none;margin-left:8px;font-size:.85rem;">' +
-      '<i class="fa fa-eye"></i> فتح الخريطة</a> ' +
-      '<a href="' + url + '" download style="padding:8px 20px;background:#27ae60;color:#fff;' +
-      'border-radius:6px;text-decoration:none;font-size:.85rem;">' +
-      '<i class="fa fa-download"></i> تحميل</a>';
+function initPdfPanel(v, id) {
+  _pdfViolId = id;
+  var noMap   = document.getElementById('pdf-no-map');
+  var toolbar = document.getElementById('pdf-toolbar');
+  var dlBtn   = document.getElementById('pdf-download-btn');
+  var replBtn = document.getElementById('pdf-replace-btn');
+  var upBtn   = document.getElementById('pdf-upload-btn-panel');
+
+  // إظهار زر الرفع لأصحاب الصلاحية
+  if (ROLE !== 'viewer' && upBtn)   upBtn.style.display   = 'inline-block';
+  if (ROLE !== 'viewer' && replBtn) replBtn.style.display = 'inline-block';
+
+  if (v.survey_map_url) {
+    _pdfUrl = v.survey_map_url;
+    if (noMap)   noMap.style.display   = 'none';
+    if (toolbar) toolbar.style.display = 'flex';
+    if (dlBtn)   dlBtn.href = v.survey_map_url;
+    // زر فتح الصفحة الكاملة
+    var fullBtn = document.getElementById('pdf-fullpage-btn');
+    if (fullBtn) fullBtn.href = v.survey_map_url;
+    // تحميل PDF
+    setTimeout(function() { loadPdfDoc(v.survey_map_url); }, 150);
+  } else {
+    _pdfUrl = null;
+    if (noMap)   noMap.style.display   = 'flex';
+    if (toolbar) toolbar.style.display = 'none';
   }
+}
 
-  if (typeof pdfjsLib === 'undefined') { showFallback('مكتبة PDF غير محملة'); return; }
-
+function loadPdfDoc(url) {
+  if (typeof pdfjsLib === 'undefined') return;
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  var container = document.getElementById('pdf-container-' + id);
+  // مسح الكانفاسات القديمة
+  var scrollArea = document.getElementById('pdf-scroll-area');
+  if (scrollArea) {
+    var old = scrollArea.querySelectorAll('canvas.pdf-page');
+    old.forEach(function(c) { c.remove(); });
+  }
+  _pdfCurrentPage = 1;
+  _pdfZoom = 1.0;
+  updateZoomLabel();
 
   pdfjsLib.getDocument(url).promise.then(function(pdf) {
-    if (loading) loading.style.display = 'none';
-    var totalPages = pdf.numPages;
-
-    function renderPage(pageNum) {
-      pdf.getPage(pageNum).then(function(page) {
-        var w        = container ? container.offsetWidth - 20 : 560;
-        var viewport = page.getViewport({scale: 1});
-        var scale    = w / viewport.width;
-        var scaled   = page.getViewport({scale: scale});
-        var c        = document.createElement('canvas');
-        c.width  = scaled.width;
-        c.height = scaled.height;
-        c.style.cssText = 'width:100%;display:block;border-radius:4px;' +
-          'box-shadow:0 2px 8px rgba(0,0,0,.3);margin-bottom:10px;';
-        if (container) container.appendChild(c);
-        page.render({canvasContext: c.getContext('2d'), viewport: scaled});
-      });
+    _pdfDoc = pdf;
+    var total = pdf.numPages;
+    var el = document.getElementById('pdf-page-total');
+    if (el) el.textContent = total;
+    var cur = document.getElementById('pdf-page-current');
+    if (cur) cur.textContent = 1;
+    // رسم كل الصفحات
+    for (var i = 1; i <= total; i++) renderPdfPage(i);
+  }).catch(function(err) {
+    console.error('PDF load error:', err);
+    var noMap = document.getElementById('pdf-no-map');
+    if (noMap) {
+      noMap.style.display = 'flex';
+      noMap.innerHTML =
+        '<i class="fa fa-exclamation-triangle" style="font-size:2rem;color:#e74c3c;margin-bottom:10px;"></i>' +
+        '<div style="color:#aaa;margin-bottom:10px;">تعذّر تحميل الخريطة</div>' +
+        '<a href="' + url + '" target="_blank" style="padding:7px 18px;background:#0d3b6e;' +
+        'color:#fff;border-radius:6px;text-decoration:none;font-size:.82rem;">' +
+        '<i class="fa fa-eye"></i> فتح في نافذة جديدة</a>';
     }
-    for (var i = 1; i <= totalPages; i++) renderPage(i);
-
-  }).catch(function() { showFallback('تعذّر عرض الخريطة داخل التطبيق'); });
+  });
 }
+
+function renderPdfPage(pageNum) {
+  if (!_pdfDoc) return;
+  var scrollArea = document.getElementById('pdf-scroll-area');
+  if (!scrollArea) return;
+
+  _pdfDoc.getPage(pageNum).then(function(page) {
+    // العرض الأساسي = عرض منطقة العرض ناقص padding
+    var containerW = scrollArea.clientWidth - 32;
+    var viewport   = page.getViewport({scale: 1});
+    // baseScale يجعل PDF يملأ العرض عند zoom=1
+    var baseScale  = containerW / viewport.width;
+    var scale      = baseScale * _pdfZoom;
+    var scaled     = page.getViewport({scale: scale});
+
+    var canvas    = document.createElement('canvas');
+    canvas.className = 'pdf-page';
+    canvas.dataset.page = pageNum;
+    // الكانفاس بالأبعاد الحقيقية — لا max-width — الـ scroll يظهر تلقائياً
+    canvas.width  = scaled.width;
+    canvas.height = scaled.height;
+    canvas.style.cssText =
+      'display:block;border-radius:3px;margin:0 auto 12px;' +
+      'box-shadow:0 2px 12px rgba(0,0,0,.5);background:#fff;' +
+      'cursor:grab;';
+
+    // إدراج بترتيب الصفحات
+    var pages    = scrollArea.querySelectorAll('canvas.pdf-page');
+    var inserted = false;
+    for (var i = 0; i < pages.length; i++) {
+      if (parseInt(pages[i].dataset.page) > pageNum) {
+        scrollArea.insertBefore(canvas, pages[i]);
+        inserted = true; break;
+      }
+    }
+    if (!inserted) scrollArea.appendChild(canvas);
+
+    page.render({
+      canvasContext: canvas.getContext('2d'),
+      viewport:      scaled
+    }).promise.then(function() {
+      canvas.addEventListener('mouseover', function() {
+        var cur = document.getElementById('pdf-page-current');
+        if (cur) cur.textContent = pageNum;
+        _pdfCurrentPage = pageNum;
+      });
+    });
+  });
+}
+
+function redrawAllPages() {
+  if (!_pdfDoc) return;
+  var scrollArea = document.getElementById('pdf-scroll-area');
+  if (scrollArea) {
+    scrollArea.querySelectorAll('canvas.pdf-page').forEach(function(c) { c.remove(); });
+  }
+  for (var i = 1; i <= _pdfDoc.numPages; i++) renderPdfPage(i);
+}
+
+function updateZoomLabel() {
+  var el = document.getElementById('pdf-zoom-label');
+  if (el) el.textContent = Math.round(_pdfZoom * 100) + '%';
+}
+
+function pdfZoomIn()   { _pdfZoom = Math.min(+((_pdfZoom + 0.25).toFixed(2)), 4.0); updateZoomLabel(); redrawAllPages(); }
+function pdfZoomOut()  { _pdfZoom = Math.max(+((_pdfZoom - 0.25).toFixed(2)), 0.25); updateZoomLabel(); redrawAllPages(); }
+function pdfFitWidth() { _pdfZoom = 1.0; updateZoomLabel(); redrawAllPages(); }
+
+// Ctrl+Scroll للتكبير/التصغير
+document.addEventListener('wheel', function(e) {
+  var scrollArea = document.getElementById('pdf-scroll-area');
+  if (!scrollArea || !_pdfDoc) return;
+  if (!scrollArea.contains(e.target)) return;
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  if (e.deltaY < 0) pdfZoomIn();
+  else              pdfZoomOut();
+}, {passive: false});
+
+function pdfPrevPage() {
+  if (!_pdfDoc || _pdfCurrentPage <= 1) return;
+  _pdfCurrentPage--;
+  scrollToPdfPage(_pdfCurrentPage);
+}
+function pdfNextPage() {
+  if (!_pdfDoc || _pdfCurrentPage >= _pdfDoc.numPages) return;
+  _pdfCurrentPage++;
+  scrollToPdfPage(_pdfCurrentPage);
+}
+function scrollToPdfPage(num) {
+  var cur = document.getElementById('pdf-page-current');
+  if (cur) cur.textContent = num;
+  var canvas = document.querySelector('canvas.pdf-page[data-page="' + num + '"]');
+  if (canvas) canvas.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function uploadSurveyMapFromPanel(input) {
+  if (!input.files[0] || !_pdfViolId) return;
+  uploadSurveyMap(_pdfViolId, input);
+}
+
+// ── hook: بعد رفع ناجح → تحديث اللوحة ──
+function onSurveyMapUploaded(url) {
+  _pdfUrl = url;
+  var noMap   = document.getElementById('pdf-no-map');
+  var toolbar = document.getElementById('pdf-toolbar');
+  var dlBtn   = document.getElementById('pdf-download-btn');
+  if (noMap)   noMap.style.display   = 'none';
+  if (toolbar) toolbar.style.display = 'flex';
+  if (dlBtn)   dlBtn.href = url;
+  loadPdfDoc(url);
+}
+
+// ══════════════════════════════════════════
+// عارض PDF بـ PDF.js (قديم - للتوافق)
+// ══════════════════════════════════════════
+function renderPDF(url, id) { loadPdfDoc(url); }
 
 // ── رفع الخريطة المساحية ─────────────────────────────
 function uploadSurveyMap(id, input) {
@@ -1357,7 +1543,7 @@ function uploadSurveyMap(id, input) {
     .then(function(data) {
       if (data.success) {
         showToast(data.message, 'success');
-        openDetailModal(id);   // إعادة تحميل الكارت
+        onSurveyMapUploaded(data.url);  // تحديث لوحة PDF مباشرة بدون إعادة تحميل
       } else {
         showToast(data.error || 'حدث خطأ', 'error');
       }
